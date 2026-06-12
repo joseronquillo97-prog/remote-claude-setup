@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1a1a2e">
-<title>Calculator</title>
+<title>Scientific Calculator</title>
 <style>
   :root {
     --bg: #1a1a2e;
@@ -13,7 +13,7 @@
     --accent-press: #b85f42;
     --key: #34345a;
     --key-press: #44447a;
-    --fn: #4a4a72;
+    --fn: #2c2c4e;
     --text: #eaeaf2;
     --muted: #9a9ab0;
     --border: #34345a;
@@ -31,18 +31,18 @@
   }
   .calc {
     width: 100%;
-    max-width: 360px;
+    max-width: 400px;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 20px;
-    padding: 20px;
+    padding: 18px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   }
   .display {
     background: var(--bg);
     border-radius: 14px;
-    padding: 18px 16px;
-    margin-bottom: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
     text-align: right;
     overflow: hidden;
   }
@@ -55,41 +55,56 @@
     text-overflow: ellipsis;
   }
   .result {
-    font-size: 2.4rem;
+    font-size: 2.2rem;
     font-weight: 600;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .sci {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
   .keys {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
+    gap: 8px;
   }
   button {
     border: none;
-    border-radius: 12px;
+    border-radius: 11px;
     background: var(--key);
     color: var(--text);
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     font-weight: 500;
-    padding: 18px 0;
+    padding: 15px 0;
     cursor: pointer;
     transition: background 0.1s, transform 0.05s;
     -webkit-tap-highlight-color: transparent;
   }
   button:active { background: var(--key-press); transform: scale(0.96); }
-  button.fn { background: var(--fn); font-size: 1.15rem; }
+  .sci button {
+    background: var(--fn);
+    font-size: 0.92rem;
+    padding: 11px 0;
+    color: var(--muted);
+  }
+  .sci button:active { background: var(--key-press); }
+  .sci button.active { color: var(--accent); font-weight: 700; }
+  button.fn { background: var(--fn); font-size: 1.1rem; }
   button.fn:active { background: var(--key-press); }
   button.op { background: var(--accent); }
   button.op:active { background: var(--accent-press); }
   button.zero { grid-column: span 2; }
+  sup { font-size: 0.7em; }
   footer {
-    margin-top: 14px;
+    margin-top: 12px;
     text-align: center;
     color: var(--muted);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
   }
 </style>
 </head>
@@ -99,6 +114,27 @@
     <div class="expression" id="expression">&nbsp;</div>
     <div class="result" id="result">0</div>
   </div>
+
+  <div class="sci">
+    <button id="mode" data-action="mode">DEG</button>
+    <button data-fn="sin">sin</button>
+    <button data-fn="cos">cos</button>
+    <button data-fn="tan">tan</button>
+    <button data-const="pi">π</button>
+
+    <button data-fn="ln">ln</button>
+    <button data-fn="log">log</button>
+    <button data-fn="sqrt">√x</button>
+    <button data-fn="sqr">x<sup>2</sup></button>
+    <button data-op="^">x<sup>y</sup></button>
+
+    <button data-fn="inv">1/x</button>
+    <button data-fn="fact">x!</button>
+    <button data-fn="exp">e<sup>x</sup></button>
+    <button data-fn="pow10">10<sup>x</sup></button>
+    <button data-const="e">e</button>
+  </div>
+
   <div class="keys">
     <button class="fn" data-action="clear">AC</button>
     <button class="fn" data-action="negate">±</button>
@@ -124,32 +160,62 @@
     <button data-action="decimal">.</button>
     <button class="op" data-action="equals">=</button>
   </div>
-  <footer>Keyboard works too: digits, + − * /, Enter, Esc, Backspace</footer>
+
+  <footer>Keyboard: digits, + − * / ^, Enter, Esc, Backspace</footer>
 </div>
 
 <script>
   const exprEl = document.getElementById("expression");
   const resultEl = document.getElementById("result");
+  const modeBtn = document.getElementById("mode");
 
-  let current = "0";      // number being typed
+  let current = "0";      // number being typed / shown
   let previous = null;    // stored operand
-  let operator = null;    // pending operator
-  let justEvaluated = false;
+  let operator = null;    // pending binary operator
+  let overwrite = false;  // next digit replaces the display
+  let degrees = true;     // trig mode
+
+  function format(r) {
+    if (typeof r !== "number" || !isFinite(r)) return "Error";
+    return String(parseFloat(r.toPrecision(12)));
+  }
 
   function compute(a, op, b) {
     a = parseFloat(a); b = parseFloat(b);
-    let r;
     switch (op) {
-      case "+": r = a + b; break;
-      case "−": r = a - b; break;
-      case "×": r = a * b; break;
-      case "÷":
-        if (b === 0) return "Error";
-        r = a / b; break;
+      case "+": return format(a + b);
+      case "−": return format(a - b);
+      case "×": return format(a * b);
+      case "÷": return b === 0 ? "Error" : format(a / b);
+      case "^": return format(Math.pow(a, b));
     }
-    // trim float artifacts like 0.30000000000000004
-    return String(parseFloat(r.toPrecision(12)));
   }
+
+  function factorial(n) {
+    if (n < 0 || n % 1 !== 0 || n > 170) return NaN;
+    let r = 1;
+    for (let i = 2; i <= n; i++) r *= i;
+    return r;
+  }
+
+  const unary = {
+    sin:   x => Math.sin(degrees ? x * Math.PI / 180 : x),
+    cos:   x => Math.cos(degrees ? x * Math.PI / 180 : x),
+    tan:   x => Math.tan(degrees ? x * Math.PI / 180 : x),
+    ln:    x => Math.log(x),
+    log:   x => Math.log10(x),
+    sqrt:  x => Math.sqrt(x),
+    sqr:   x => x * x,
+    inv:   x => 1 / x,
+    fact:  x => factorial(x),
+    exp:   x => Math.exp(x),
+    pow10: x => Math.pow(10, x)
+  };
+
+  const fnLabel = {
+    sin: "sin", cos: "cos", tan: "tan", ln: "ln", log: "log",
+    sqrt: "√", sqr: "sqr", inv: "1/", fact: "fact", exp: "e^", pow10: "10^"
+  };
 
   function render() {
     resultEl.textContent = current;
@@ -159,12 +225,10 @@
   }
 
   function inputDigit(d) {
-    if (current === "Error" || justEvaluated) {
-      if (justEvaluated) { previous = null; operator = null; }
+    if (current === "Error") { clearAll(); }
+    if (overwrite || current === "0") {
       current = d;
-      justEvaluated = false;
-    } else if (current === "0") {
-      current = d;
+      overwrite = false;
     } else if (current.length < 15) {
       current += d;
     }
@@ -172,10 +236,10 @@
   }
 
   function inputDecimal() {
-    if (current === "Error" || justEvaluated) {
-      if (justEvaluated) { previous = null; operator = null; }
+    if (current === "Error") { clearAll(); }
+    if (overwrite) {
       current = "0.";
-      justEvaluated = false;
+      overwrite = false;
     } else if (!current.includes(".")) {
       current += ".";
     }
@@ -184,20 +248,17 @@
 
   function setOperator(op) {
     if (current === "Error") return;
-    if (previous !== null && operator && !justEvaluated) {
-      previous = compute(previous, operator, current);
-      if (previous === "Error") { current = "Error"; previous = null; operator = null; render(); return; }
-      current = previous;
-    } else {
+    if (previous !== null && operator && !overwrite) {
+      const r = compute(previous, operator, current);
+      if (r === "Error") { current = "Error"; previous = null; operator = null; render(); return; }
+      previous = r;
+    } else if (previous === null || !overwrite) {
       previous = current;
     }
     operator = op;
-    justEvaluated = false;
     current = previous;
+    overwrite = true;
     render();
-    // start fresh number on next digit
-    current = "0";
-    resultEl.textContent = previous;
   }
 
   function equals() {
@@ -207,15 +268,32 @@
     current = result;
     previous = null;
     operator = null;
-    justEvaluated = true;
+    overwrite = true;
     resultEl.textContent = current;
+  }
+
+  function applyUnary(name) {
+    if (current === "Error") return;
+    const arg = current;
+    current = format(unary[name](parseFloat(current)));
+    if (previous === null || !operator) {
+      exprEl.textContent = fnLabel[name] + "(" + arg + ")";
+    }
+    overwrite = true;
+    resultEl.textContent = current;
+  }
+
+  function insertConst(name) {
+    current = format(name === "pi" ? Math.PI : Math.E);
+    overwrite = true;
+    render();
   }
 
   function clearAll() {
     current = "0";
     previous = null;
     operator = null;
-    justEvaluated = false;
+    overwrite = false;
     render();
   }
 
@@ -227,30 +305,39 @@
 
   function percent() {
     if (current === "Error") return;
-    current = String(parseFloat((parseFloat(current) / 100).toPrecision(12)));
+    current = format(parseFloat(current) / 100);
     render();
   }
 
   function backspace() {
-    if (current === "Error" || justEvaluated) return;
+    if (current === "Error" || overwrite) return;
     current = current.length > 1 ? current.slice(0, -1) : "0";
     if (current === "-") current = "0";
     render();
+  }
+
+  function toggleMode() {
+    degrees = !degrees;
+    modeBtn.textContent = degrees ? "DEG" : "RAD";
+    modeBtn.classList.toggle("active", !degrees);
   }
 
   document.querySelectorAll("button").forEach(btn => {
     btn.addEventListener("click", () => {
       if (btn.dataset.digit !== undefined) inputDigit(btn.dataset.digit);
       else if (btn.dataset.op) setOperator(btn.dataset.op);
+      else if (btn.dataset.fn) applyUnary(btn.dataset.fn);
+      else if (btn.dataset.const) insertConst(btn.dataset.const);
       else if (btn.dataset.action === "decimal") inputDecimal();
       else if (btn.dataset.action === "equals") equals();
       else if (btn.dataset.action === "clear") clearAll();
       else if (btn.dataset.action === "negate") negate();
       else if (btn.dataset.action === "percent") percent();
+      else if (btn.dataset.action === "mode") toggleMode();
     });
   });
 
-  const keyOps = { "+": "+", "-": "−", "*": "×", "/": "÷" };
+  const keyOps = { "+": "+", "-": "−", "*": "×", "/": "÷", "^": "^" };
   document.addEventListener("keydown", e => {
     if (e.key >= "0" && e.key <= "9") inputDigit(e.key);
     else if (keyOps[e.key]) { e.preventDefault(); setOperator(keyOps[e.key]); }
