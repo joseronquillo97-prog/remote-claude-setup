@@ -2,21 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#1a1a2e">
-<title>Scientific Calculator</title>
+<title>Graphing Calculator</title>
 <style>
   :root {
     --bg: #1a1a2e;
     --card: #24243e;
     --accent: #d97757;
-    --accent-press: #b85f42;
     --key: #34345a;
     --key-press: #44447a;
     --fn: #2c2c4e;
     --text: #eaeaf2;
     --muted: #9a9ab0;
     --border: #34345a;
+    --error: #e06c75;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -25,330 +25,534 @@
     color: var(--text);
     min-height: 100vh;
     display: flex;
-    align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: 12px;
   }
-  .calc {
-    width: 100%;
-    max-width: 400px;
+  .app { width: 100%; max-width: 480px; }
+  .plot-wrap {
+    position: relative;
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 18px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  }
-  .display {
-    background: var(--bg);
-    border-radius: 14px;
-    padding: 16px;
-    margin-bottom: 14px;
-    text-align: right;
+    border-radius: 16px;
     overflow: hidden;
+    height: min(58vh, 430px);
+    touch-action: none;
   }
-  .expression {
-    min-height: 1.2em;
-    color: var(--muted);
-    font-size: 0.95rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  .zoom-btns {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
-  .result {
-    font-size: 2.2rem;
-    font-weight: 600;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .sci {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-  .keys {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-  button {
-    border: none;
-    border-radius: 11px;
-    background: var(--key);
+  .zoom-btns button {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(36, 36, 62, 0.85);
     color: var(--text);
-    font-size: 1.25rem;
-    font-weight: 500;
-    padding: 15px 0;
+    font-size: 1.15rem;
     cursor: pointer;
-    transition: background 0.1s, transform 0.05s;
     -webkit-tap-highlight-color: transparent;
   }
-  button:active { background: var(--key-press); transform: scale(0.96); }
-  .sci button {
-    background: var(--fn);
-    font-size: 0.92rem;
-    padding: 11px 0;
-    color: var(--muted);
+  .zoom-btns button:active { background: var(--key-press); }
+  .presets {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 12px 2px 4px;
+    -webkit-overflow-scrolling: touch;
   }
-  .sci button:active { background: var(--key-press); }
-  .sci button.active { color: var(--accent); font-weight: 700; }
-  button.fn { background: var(--fn); font-size: 1.1rem; }
-  button.fn:active { background: var(--key-press); }
-  button.op { background: var(--accent); }
-  button.op:active { background: var(--accent-press); }
-  button.zero { grid-column: span 2; }
-  sup { font-size: 0.7em; }
+  .presets button {
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .presets button:active { background: var(--key-press); }
+  .eqs { margin-top: 8px; }
+  .eq-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  .eq-row .dot {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .eq-row input {
+    flex: 1;
+    min-width: 0;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 1rem;
+    font-family: "SF Mono", Menlo, monospace;
+  }
+  .eq-row.error { border-color: var(--error); }
+  .eq-row .remove {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+  .add-eq {
+    width: 100%;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    background: none;
+    color: var(--muted);
+    font-size: 0.95rem;
+    padding: 10px;
+    cursor: pointer;
+  }
   footer {
     margin-top: 12px;
     text-align: center;
     color: var(--muted);
-    font-size: 0.72rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+  footer code {
+    background: var(--fn);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.95em;
   }
 </style>
 </head>
 <body>
-<div class="calc">
-  <div class="display">
-    <div class="expression" id="expression">&nbsp;</div>
-    <div class="result" id="result">0</div>
+<div class="app">
+  <div class="plot-wrap">
+    <canvas id="canvas"></canvas>
+    <div class="zoom-btns">
+      <button id="zoomin" title="Zoom in">+</button>
+      <button id="zoomout" title="Zoom out">−</button>
+      <button id="zoomreset" title="Reset view">⌂</button>
+    </div>
   </div>
 
-  <div class="sci">
-    <button id="mode" data-action="mode">DEG</button>
-    <button data-fn="sin">sin</button>
-    <button data-fn="cos">cos</button>
-    <button data-fn="tan">tan</button>
-    <button data-const="pi">π</button>
-
-    <button data-fn="ln">ln</button>
-    <button data-fn="log">log</button>
-    <button data-fn="sqrt">√x</button>
-    <button data-fn="sqr">x<sup>2</sup></button>
-    <button data-op="^">x<sup>y</sup></button>
-
-    <button data-fn="inv">1/x</button>
-    <button data-fn="fact">x!</button>
-    <button data-fn="exp">e<sup>x</sup></button>
-    <button data-fn="pow10">10<sup>x</sup></button>
-    <button data-const="e">e</button>
+  <div class="presets" id="presets">
+    <button data-preset="heart">❤️ Heart</button>
+    <button data-preset="smiley">🙂 Happy face</button>
+    <button data-preset="flower">🌸 Flower</button>
+    <button data-preset="infinity">∞ Infinity</button>
+    <button data-preset="waves">〰️ Waves</button>
   </div>
 
-  <div class="keys">
-    <button class="fn" data-action="clear">AC</button>
-    <button class="fn" data-action="negate">±</button>
-    <button class="fn" data-action="percent">%</button>
-    <button class="op" data-op="÷">÷</button>
+  <div class="eqs" id="eqs"></div>
+  <button class="add-eq" id="addeq">+ Add equation</button>
 
-    <button data-digit="7">7</button>
-    <button data-digit="8">8</button>
-    <button data-digit="9">9</button>
-    <button class="op" data-op="×">×</button>
-
-    <button data-digit="4">4</button>
-    <button data-digit="5">5</button>
-    <button data-digit="6">6</button>
-    <button class="op" data-op="−">−</button>
-
-    <button data-digit="1">1</button>
-    <button data-digit="2">2</button>
-    <button data-digit="3">3</button>
-    <button class="op" data-op="+">+</button>
-
-    <button class="zero" data-digit="0">0</button>
-    <button data-action="decimal">.</button>
-    <button class="op" data-action="equals">=</button>
-  </div>
-
-  <footer>Keyboard: digits, + − * / ^, Enter, Esc, Backspace</footer>
+  <footer>
+    Type <code>y = sin(x)</code> or implicit equations like
+    <code>x^2 + y^2 = 9</code> · drag to pan, pinch or scroll to zoom<br>
+    Functions: sin cos tan asin acos atan sqrt abs ln log exp · constants: pi, e
+  </footer>
 </div>
 
 <script>
-  const exprEl = document.getElementById("expression");
-  const resultEl = document.getElementById("result");
-  const modeBtn = document.getElementById("mode");
+  /* ---- PURE-BEGIN (no DOM below this line until PURE-END) ---- */
 
-  let current = "0";      // number being typed / shown
-  let previous = null;    // stored operand
-  let operator = null;    // pending binary operator
-  let overwrite = false;  // next digit replaces the display
-  let degrees = true;     // trig mode
+  // Compile a math expression string into a JS function of the given
+  // variables. Only whitelisted tokens survive, so new Function is safe.
+  const FNS = {
+    asin: "Math.asin", acos: "Math.acos", atan: "Math.atan",
+    sin: "Math.sin", cos: "Math.cos", tan: "Math.tan",
+    sqrt: "Math.sqrt", abs: "Math.abs", ln: "Math.log", log: "Math.log10",
+    exp: "Math.exp", floor: "Math.floor", ceil: "Math.ceil",
+    round: "Math.round", sign: "Math.sign", min: "Math.min", max: "Math.max"
+  };
+  const CONSTS = { pi: "Math.PI", e: "Math.E" };
 
-  function format(r) {
-    if (typeof r !== "number" || !isFinite(r)) return "Error";
-    return String(parseFloat(r.toPrecision(12)));
-  }
-
-  function compute(a, op, b) {
-    a = parseFloat(a); b = parseFloat(b);
-    switch (op) {
-      case "+": return format(a + b);
-      case "−": return format(a - b);
-      case "×": return format(a * b);
-      case "÷": return b === 0 ? "Error" : format(a / b);
-      case "^": return format(Math.pow(a, b));
+  function compile(src, vars) {
+    const tokens = [];
+    const re = /([a-z]+)|(\d*\.?\d+)|(\*\*|\^)|([-+*/(),])|(\S)/g;
+    let m;
+    while ((m = re.exec(src.toLowerCase()))) {
+      if (m[5]) throw new Error("bad character: " + m[5]);
+      if (m[1]) tokens.push({ t: "id", v: m[1] });
+      else if (m[2]) tokens.push({ t: "num", v: m[2] });
+      else if (m[3]) tokens.push({ t: "op", v: "**" });
+      else tokens.push({ t: "op", v: m[4] });
     }
+    if (!tokens.length) throw new Error("empty");
+    let out = "";
+    let prevValue = false; // previous token can end a value (enables implicit *)
+    for (const tk of tokens) {
+      let piece;
+      if (tk.t === "id") {
+        if (FNS[tk.v]) piece = FNS[tk.v];
+        else if (CONSTS[tk.v]) piece = CONSTS[tk.v];
+        else if (vars.includes(tk.v)) piece = tk.v;
+        else throw new Error("unknown name: " + tk.v);
+      } else piece = tk.v;
+      if (prevValue && (tk.t === "id" || tk.t === "num" || tk.v === "("))
+        out += "*";
+      out += piece;
+      prevValue = tk.t === "num" || tk.v === ")" ||
+        (tk.t === "id" && !FNS[tk.v]);
+    }
+    const f = new Function(...vars, '"use strict"; return (' + out + ");");
+    f(...vars.map(() => 0.5)); // force syntax/reference errors now
+    return f;
   }
 
-  function factorial(n) {
-    if (n < 0 || n % 1 !== 0 || n > 170) return NaN;
-    let r = 1;
-    for (let i = 2; i <= n; i++) r *= i;
-    return r;
+  // Parse one equation line into { type: "fn", f(x) } or { type: "imp", f(x,y) }
+  function parseEquation(src) {
+    const parts = src.split("=");
+    if (parts.length > 2) throw new Error("too many =");
+    if (parts.length === 2) {
+      const [lhs, rhs] = parts.map(s => s.trim());
+      if (!lhs || !rhs) throw new Error("incomplete equation");
+      if (lhs === "y") {
+        try { return { type: "fn", f: compile(rhs, ["x"]) }; }
+        catch (e) { /* rhs uses y — fall through to implicit */ }
+      }
+      return { type: "imp", f: compile("(" + lhs + ")-(" + rhs + ")", ["x", "y"]) };
+    }
+    try { return { type: "fn", f: compile(src, ["x"]) }; }
+    catch (e) { return { type: "imp", f: compile(src, ["x", "y"]) }; }
   }
 
-  const unary = {
-    sin:   x => Math.sin(degrees ? x * Math.PI / 180 : x),
-    cos:   x => Math.cos(degrees ? x * Math.PI / 180 : x),
-    tan:   x => Math.tan(degrees ? x * Math.PI / 180 : x),
-    ln:    x => Math.log(x),
-    log:   x => Math.log10(x),
-    sqrt:  x => Math.sqrt(x),
-    sqr:   x => x * x,
-    inv:   x => 1 / x,
-    fact:  x => factorial(x),
-    exp:   x => Math.exp(x),
-    pow10: x => Math.pow(10, x)
+  const PRESETS = {
+    heart: {
+      view: { cx: 0, cy: 0.1, half: 1.7 },
+      eqs: ["(x^2 + y^2 - 1)^3 = x^2 * y^3"]
+    },
+    smiley: {
+      view: { cx: 0, cy: 0, half: 4 },
+      eqs: [
+        "x^2 + y^2 = 9",
+        "(x+1)^2 + (y-1)^2 = 0.16",
+        "(x-1)^2 + (y-1)^2 = 0.16",
+        "y = 0.35x^2 - 2.3 + 0*sqrt(1.7 - abs(x))"
+      ]
+    },
+    flower: {
+      view: { cx: 0, cy: 0, half: 2.6 },
+      eqs: ["(x^2 + y^2)^3 = 4(x^2 - y^2)^2"]
+    },
+    infinity: {
+      view: { cx: 0, cy: 0, half: 2.8 },
+      eqs: ["(x^2 + y^2)^2 = 4(x^2 - y^2)"]
+    },
+    waves: {
+      view: { cx: 0, cy: 0, half: 6 },
+      eqs: ["y = sin(x)", "y = sin(x) + sin(2x)/2"]
+    }
   };
 
-  const fnLabel = {
-    sin: "sin", cos: "cos", tan: "tan", ln: "ln", log: "log",
-    sqrt: "√", sqr: "sqr", inv: "1/", fact: "fact", exp: "e^", pow10: "10^"
-  };
+  /* ---- PURE-END ---- */
 
-  function render() {
-    resultEl.textContent = current;
-    exprEl.innerHTML = (previous !== null && operator)
-      ? previous + " " + operator
-      : "&nbsp;";
+  const PALETTE = ["#d97757", "#4caf82", "#5b9bd5", "#c678dd", "#e5c07b", "#56b6c2"];
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const eqsEl = document.getElementById("eqs");
+
+  let equations = []; // { src, color, plot|null }
+  let view = { cx: 0, cy: 0, half: 5 };
+  let homeView = { ...view };
+  let W = 0, H = 0;
+
+  function unitsPerPx() { return (2 * view.half) / Math.min(W, H); }
+  function xAt(px) { return view.cx + (px - W / 2) * unitsPerPx(); }
+  function yAt(py) { return view.cy - (py - H / 2) * unitsPerPx(); }
+  function pxOf(x) { return W / 2 + (x - view.cx) / unitsPerPx(); }
+  function pyOf(y) { return H / 2 - (y - view.cy) / unitsPerPx(); }
+
+  function niceStep(targetUnits) {
+    const p = Math.pow(10, Math.floor(Math.log10(targetUnits)));
+    for (const mult of [1, 2, 5, 10]) if (p * mult >= targetUnits) return p * mult;
+    return p * 10;
   }
 
-  function inputDigit(d) {
-    if (current === "Error") { clearAll(); }
-    if (overwrite || current === "0") {
-      current = d;
-      overwrite = false;
-    } else if (current.length < 15) {
-      current += d;
+  function fmt(v) {
+    const r = parseFloat(v.toPrecision(10));
+    return Math.abs(r) >= 1e6 || (Math.abs(r) < 1e-4 && r !== 0)
+      ? r.toExponential(0) : String(r);
+  }
+
+  function drawGrid() {
+    const s = unitsPerPx();
+    const step = niceStep(s * 64);
+    ctx.lineWidth = 1;
+    ctx.font = "11px -apple-system, sans-serif";
+    ctx.fillStyle = "#9a9ab0";
+    ctx.strokeStyle = "rgba(154, 154, 176, 0.14)";
+    ctx.beginPath();
+    const x0 = Math.ceil(xAt(0) / step) * step;
+    for (let x = x0; x <= xAt(W); x += step) {
+      const px = pxOf(x);
+      ctx.moveTo(px, 0); ctx.lineTo(px, H);
     }
-    render();
-  }
-
-  function inputDecimal() {
-    if (current === "Error") { clearAll(); }
-    if (overwrite) {
-      current = "0.";
-      overwrite = false;
-    } else if (!current.includes(".")) {
-      current += ".";
+    const y0 = Math.floor(yAt(0) / step) * step;
+    for (let y = y0; y >= yAt(H); y -= step) {
+      const py = pyOf(y);
+      ctx.moveTo(0, py); ctx.lineTo(W, py);
     }
-    render();
-  }
-
-  function setOperator(op) {
-    if (current === "Error") return;
-    if (previous !== null && operator && !overwrite) {
-      const r = compute(previous, operator, current);
-      if (r === "Error") { current = "Error"; previous = null; operator = null; render(); return; }
-      previous = r;
-    } else if (previous === null || !overwrite) {
-      previous = current;
+    ctx.stroke();
+    // axes
+    ctx.strokeStyle = "rgba(154, 154, 176, 0.55)";
+    ctx.beginPath();
+    const ax = pxOf(0), ay = pyOf(0);
+    if (ax >= 0 && ax <= W) { ctx.moveTo(ax, 0); ctx.lineTo(ax, H); }
+    if (ay >= 0 && ay <= H) { ctx.moveTo(0, ay); ctx.lineTo(W, ay); }
+    ctx.stroke();
+    // labels along axes
+    const ly = Math.min(Math.max(ay + 13, 13), H - 4);
+    for (let x = x0; x <= xAt(W); x += step) {
+      if (Math.abs(x) < step / 2) continue;
+      ctx.fillText(fmt(x), pxOf(x) + 3, ly);
     }
-    operator = op;
-    current = previous;
-    overwrite = true;
-    render();
-  }
-
-  function equals() {
-    if (previous === null || !operator || current === "Error") return;
-    const result = compute(previous, operator, current);
-    exprEl.textContent = previous + " " + operator + " " + current + " =";
-    current = result;
-    previous = null;
-    operator = null;
-    overwrite = true;
-    resultEl.textContent = current;
-  }
-
-  function applyUnary(name) {
-    if (current === "Error") return;
-    const arg = current;
-    current = format(unary[name](parseFloat(current)));
-    if (previous === null || !operator) {
-      exprEl.textContent = fnLabel[name] + "(" + arg + ")";
+    const lx = Math.min(Math.max(ax + 4, 4), W - 30);
+    for (let y = y0; y >= yAt(H); y -= step) {
+      if (Math.abs(y) < step / 2) continue;
+      ctx.fillText(fmt(y), lx, pyOf(y) - 3);
     }
-    overwrite = true;
-    resultEl.textContent = current;
   }
 
-  function insertConst(name) {
-    current = format(name === "pi" ? Math.PI : Math.E);
-    overwrite = true;
-    render();
+  function drawFunction(f, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    let pen = false, lastPy = 0;
+    for (let px = 0; px <= W; px += 1) {
+      let y;
+      try { y = f(xAt(px)); } catch (e) { y = NaN; }
+      if (typeof y !== "number" || !isFinite(y)) { pen = false; continue; }
+      const py = pyOf(y);
+      if (py < -H * 2 || py > H * 3) { pen = false; continue; }
+      if (pen && Math.abs(py - lastPy) > H * 1.5) pen = false; // asymptote jump
+      if (pen) ctx.lineTo(px, py);
+      else ctx.moveTo(px, py);
+      pen = true;
+      lastPy = py;
+    }
+    ctx.stroke();
   }
 
-  function clearAll() {
-    current = "0";
-    previous = null;
-    operator = null;
-    overwrite = false;
-    render();
+  // Implicit curves via marching squares on a pixel grid
+  function drawImplicit(f, color) {
+    const step = 3;
+    const cols = Math.ceil(W / step), rows = Math.ceil(H / step);
+    const vals = new Float64Array((cols + 1) * (rows + 1));
+    for (let j = 0; j <= rows; j++) {
+      const y = yAt(j * step);
+      for (let i = 0; i <= cols; i++) {
+        let v;
+        try { v = f(xAt(i * step), y); } catch (e) { v = NaN; }
+        vals[j * (cols + 1) + i] = v;
+      }
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const a = vals[j * (cols + 1) + i];         // top-left
+        const b = vals[j * (cols + 1) + i + 1];     // top-right
+        const c = vals[(j + 1) * (cols + 1) + i + 1]; // bottom-right
+        const d = vals[(j + 1) * (cols + 1) + i];   // bottom-left
+        if (isNaN(a) || isNaN(b) || isNaN(c) || isNaN(d)) continue;
+        const x0 = i * step, y0 = j * step;
+        const pts = [];
+        if ((a > 0) !== (b > 0)) pts.push([x0 + step * a / (a - b), y0]);
+        if ((b > 0) !== (c > 0)) pts.push([x0 + step, y0 + step * b / (b - c)]);
+        if ((d > 0) !== (c > 0)) pts.push([x0 + step * d / (d - c), y0 + step]);
+        if ((a > 0) !== (d > 0)) pts.push([x0, y0 + step * a / (a - d)]);
+        if (pts.length === 2) {
+          ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]);
+        } else if (pts.length === 4) {
+          ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]);
+          ctx.moveTo(pts[2][0], pts[2][1]); ctx.lineTo(pts[3][0], pts[3][1]);
+        }
+      }
+    }
+    ctx.stroke();
   }
 
-  function negate() {
-    if (current === "Error" || current === "0") return;
-    current = current.startsWith("-") ? current.slice(1) : "-" + current;
-    render();
-  }
-
-  function percent() {
-    if (current === "Error") return;
-    current = format(parseFloat(current) / 100);
-    render();
-  }
-
-  function backspace() {
-    if (current === "Error" || overwrite) return;
-    current = current.length > 1 ? current.slice(0, -1) : "0";
-    if (current === "-") current = "0";
-    render();
-  }
-
-  function toggleMode() {
-    degrees = !degrees;
-    modeBtn.textContent = degrees ? "DEG" : "RAD";
-    modeBtn.classList.toggle("active", !degrees);
-  }
-
-  document.querySelectorAll("button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (btn.dataset.digit !== undefined) inputDigit(btn.dataset.digit);
-      else if (btn.dataset.op) setOperator(btn.dataset.op);
-      else if (btn.dataset.fn) applyUnary(btn.dataset.fn);
-      else if (btn.dataset.const) insertConst(btn.dataset.const);
-      else if (btn.dataset.action === "decimal") inputDecimal();
-      else if (btn.dataset.action === "equals") equals();
-      else if (btn.dataset.action === "clear") clearAll();
-      else if (btn.dataset.action === "negate") negate();
-      else if (btn.dataset.action === "percent") percent();
-      else if (btn.dataset.action === "mode") toggleMode();
+  let rafPending = false;
+  function redraw() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => {
+      rafPending = false;
+      ctx.clearRect(0, 0, W, H);
+      drawGrid();
+      for (const eq of equations) {
+        if (!eq.plot) continue;
+        if (eq.plot.type === "fn") drawFunction(eq.plot.f, eq.color);
+        else drawImplicit(eq.plot.f, eq.color);
+      }
     });
+  }
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    W = canvas.clientWidth;
+    H = canvas.clientHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    redraw();
+  }
+
+  /* ---- equation list UI ---- */
+
+  function compileRow(eq, rowEl) {
+    try {
+      eq.plot = eq.src.trim() ? parseEquation(eq.src) : null;
+      rowEl.classList.remove("error");
+    } catch (e) {
+      eq.plot = null;
+      if (eq.src.trim()) rowEl.classList.add("error");
+      else rowEl.classList.remove("error");
+    }
+  }
+
+  function rebuildRows() {
+    eqsEl.innerHTML = "";
+    equations.forEach((eq, idx) => {
+      const row = document.createElement("div");
+      row.className = "eq-row";
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.background = eq.color;
+      const input = document.createElement("input");
+      input.value = eq.src;
+      input.placeholder = "y = sin(x)";
+      input.autocapitalize = "off";
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      input.addEventListener("input", () => {
+        eq.src = input.value;
+        compileRow(eq, row);
+        redraw();
+      });
+      const rm = document.createElement("button");
+      rm.className = "remove";
+      rm.textContent = "✕";
+      rm.addEventListener("click", () => {
+        equations.splice(idx, 1);
+        rebuildRows();
+        redraw();
+      });
+      row.append(dot, input, rm);
+      eqsEl.appendChild(row);
+      compileRow(eq, row);
+    });
+  }
+
+  function setEquations(srcs) {
+    equations = srcs.map((src, i) => ({
+      src, color: PALETTE[i % PALETTE.length], plot: null
+    }));
+    rebuildRows();
+  }
+
+  function loadPreset(name) {
+    const p = PRESETS[name];
+    view = { ...p.view };
+    homeView = { ...p.view };
+    setEquations(p.eqs);
+    redraw();
+  }
+
+  document.getElementById("presets").addEventListener("click", e => {
+    const b = e.target.closest("[data-preset]");
+    if (b) loadPreset(b.dataset.preset);
   });
 
-  const keyOps = { "+": "+", "-": "−", "*": "×", "/": "÷", "^": "^" };
-  document.addEventListener("keydown", e => {
-    if (e.key >= "0" && e.key <= "9") inputDigit(e.key);
-    else if (keyOps[e.key]) { e.preventDefault(); setOperator(keyOps[e.key]); }
-    else if (e.key === ".") inputDecimal();
-    else if (e.key === "Enter" || e.key === "=") { e.preventDefault(); equals(); }
-    else if (e.key === "Escape") clearAll();
-    else if (e.key === "Backspace") backspace();
-    else if (e.key === "%") percent();
+  document.getElementById("addeq").addEventListener("click", () => {
+    if (equations.length >= 8) return;
+    equations.push({
+      src: "", color: PALETTE[equations.length % PALETTE.length], plot: null
+    });
+    rebuildRows();
+    eqsEl.querySelector(".eq-row:last-child input").focus();
   });
 
-  render();
+  /* ---- pan & zoom ---- */
+
+  function zoomAt(factor, px, py) {
+    const ux = xAt(px), uy = yAt(py);
+    view.half = Math.min(Math.max(view.half / factor, 1e-6), 1e8);
+    const s = unitsPerPx();
+    view.cx = ux - (px - W / 2) * s;
+    view.cy = uy + (py - H / 2) * s;
+    redraw();
+  }
+
+  const pointers = new Map();
+  let pinchDist = 0;
+  canvas.addEventListener("pointerdown", e => {
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+    if (pointers.size === 2) {
+      const [p1, p2] = [...pointers.values()];
+      pinchDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    }
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (!pointers.has(e.pointerId)) return;
+    const prev = pointers.get(e.pointerId);
+    const cur = { x: e.offsetX, y: e.offsetY };
+    pointers.set(e.pointerId, cur);
+    if (pointers.size === 1) {
+      const s = unitsPerPx();
+      view.cx -= (cur.x - prev.x) * s;
+      view.cy += (cur.y - prev.y) * s;
+      redraw();
+    } else if (pointers.size === 2) {
+      const [p1, p2] = [...pointers.values()];
+      const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+      if (pinchDist > 0 && dist > 0)
+        zoomAt(dist / pinchDist, (p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+      pinchDist = dist;
+    }
+  });
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    pinchDist = 0;
+  }
+  canvas.addEventListener("pointerup", endPointer);
+  canvas.addEventListener("pointercancel", endPointer);
+  canvas.addEventListener("wheel", e => {
+    e.preventDefault();
+    zoomAt(Math.pow(1.0015, -e.deltaY), e.offsetX, e.offsetY);
+  }, { passive: false });
+
+  document.getElementById("zoomin").addEventListener("click", () => zoomAt(1.4, W / 2, H / 2));
+  document.getElementById("zoomout").addEventListener("click", () => zoomAt(1 / 1.4, W / 2, H / 2));
+  document.getElementById("zoomreset").addEventListener("click", () => {
+    view = { ...homeView };
+    redraw();
+  });
+
+  window.addEventListener("resize", resize);
+  resize();
+  loadPreset("heart");
 </script>
 </body>
 </html>
