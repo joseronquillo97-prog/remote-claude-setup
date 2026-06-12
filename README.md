@@ -8,9 +8,12 @@ shapes like a heart and a happy face.
 ## What it does
 
 - Plots `y = f(x)` functions and implicit equations like `x^2 + y^2 = 9`
-- **Text graphing** — type any text and it's traced as curves on the graph
-  (rendered to a hidden canvas, then contoured like an implicit equation, so
-  it pans and zooms with everything else)
+- **Text graphing with real formulas** — type any text and each letter
+  outline is fitted with a Fourier series; the resulting parametric
+  formulas (`x = ...; y = ...` with t in [0, 2π]) appear as editable
+  equations in the list, the graph is drawn from those formulas, and a
+  button copies them all
+- Parametric equations: `x = cos(t); y = sin(t)`
 - Preset shape examples: ❤️ Heart, 🙂 Happy face, 🌸 Flower, ∞ Infinity,
   〰️ Waves — each loads its formulas into the equation list so you can
   see and edit them
