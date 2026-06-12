@@ -1,6 +1,6 @@
-# Calculator
+# Scientific Calculator
 
-A simple, mobile-friendly calculator webapp.
+A mobile-friendly scientific calculator webapp.
 
 **Live site:** https://joseronquillo97-prog.github.io/remote-claude-setup/
 (auto-deploys from `main` via GitHub Pages)
@@ -8,6 +8,8 @@ A simple, mobile-friendly calculator webapp.
 ## What it does
 
 - Basic arithmetic: add, subtract, multiply, divide
+- Scientific functions: sin/cos/tan (DEG/RAD toggle), ln, log, √x, x², xʸ,
+  1/x, x!, eˣ, 10ˣ, and the constants π and e
 - Extras: percent, sign toggle (±), decimal input, chained operations
 - Full keyboard support: digits, `+ - * /`, `Enter` (=), `Esc` (clear), `Backspace`
 - Pure static HTML/CSS/JS, no build step — works great on iPhone
