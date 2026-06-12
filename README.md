@@ -2,7 +2,8 @@
 
 A simple, mobile-friendly calculator webapp.
 
-**Live site:** deployed on Vercel (auto-deploys from `main`).
+**Live site:** https://joseronquillo97-prog.github.io/remote-claude-setup/
+(auto-deploys from `main` via GitHub Pages)
 
 ## What it does
 
@@ -17,9 +18,7 @@ No tooling needed — just open `index.html` in a browser.
 
 ## Deployment
 
-Deployed on [Vercel](https://vercel.com) via GitHub integration:
-
-1. Go to [vercel.com/new](https://vercel.com/new)
-2. Import this repository
-3. Framework preset: **Other** (static site, no build command)
-4. Deploy — done. Every future `git push` redeploys automatically.
+Deployed on **GitHub Pages** via GitHub Actions
+(`.github/workflows/deploy-pages.yml`). Every push to `main` redeploys
+the site automatically — no accounts or tokens needed beyond the repo
+itself.
